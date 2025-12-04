@@ -9,14 +9,25 @@ let w, h;
 let A, B;
 let running = true;
 
+// Your brown/purple palette
+const colors = [
+  [9, 9, 9],       // #090909
+  [33, 20, 29],    // #21141D
+  [46, 27, 21],    // #2E1B15
+  [66, 47, 33],    // #422F21
+  [86, 52, 43],    // #56342B
+  [78, 21, 38],    // #4E1526
+  [90, 40, 43],    // #5A282B
+];
+
 // Initialize canvas and buffers
 function resizeCanvas() {
   w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight; // always viewport
+  h = canvas.height = window.innerHeight + document.body.scrollHeight; // oversize to cover scroll
+
   A = new Float32Array(w * h).fill(1);
   B = new Float32Array(w * h).fill(0);
 
-  // Initial random B spots
   addRandomBSpots(500);
 }
 
@@ -49,11 +60,9 @@ function updateRD() {
       const i = x + y * w;
       const a = A[i], b = B[i];
 
-      // Gray-Scott Reaction-Diffusion equations
       const aNext = a + (Da * lap(A, x, y) - a * b * b + feed * (1 - a));
       const bNext = b + (Db * lap(B, x, y) + a * b * b - (kill + feed) * b);
 
-      // Clamp values to [0,1]
       newA[i] = Math.min(Math.max(aNext, 0), 1);
       newB[i] = Math.min(Math.max(bNext, 0), 1);
     }
@@ -63,6 +72,13 @@ function updateRD() {
   B = newB;
 }
 
+// Map A-B to palette color
+function getColor(diff) {
+  const idx = Math.floor(((diff + 1) / 2) * (colors.length - 1)); // -1..1 → 0..palette.length
+  const [r, g, b] = colors[Math.max(0, Math.min(colors.length - 1, idx))];
+  return [r, g, b];
+}
+
 // Draw reaction-diffusion
 function drawRD() {
   const imageData = ctx.createImageData(w, h);
@@ -70,28 +86,27 @@ function drawRD() {
 
   for (let i = 0; i < A.length; i++) {
     const diff = A[i] - B[i];
-    // Map to safe mid-range color to reduce flicker
-    const v = Math.floor((diff * 100) + 128); // softer scaling
+    const [r, g, b] = getColor(diff);
     const idx = i * 4;
-    data[idx] = Math.max(0, Math.min(255, v + 20));   // Red
-    data[idx + 1] = Math.max(0, Math.min(255, v));    // Green
-    data[idx + 2] = Math.max(0, Math.min(255, v + 10)); // Blue
+    data[idx] = r;
+    data[idx + 1] = g;
+    data[idx + 2] = b;
     data[idx + 3] = 255;
   }
 
   ctx.putImageData(imageData, 0, 0);
 }
 
-// Add B spots every few seconds
+// Add B spots periodically for continuous evolution
 setInterval(() => addRandomBSpots(50), 2500);
 
-// Main animation loop
+// Animation loop
 function animate() {
   if (running) {
     updateRD();
     drawRD();
   }
-  // Soft parallax scroll
+  // Soft parallax scroll (0.2 factor)
   canvas.style.transform = `translateY(${window.scrollY * 0.2}px)`;
   requestAnimationFrame(animate);
 }
