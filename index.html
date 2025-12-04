@@ -9,75 +9,83 @@
 <body>
   <!-- fullscreen canvas for reaction-diffusion background -->
   <canvas id="rd"></canvas>
-  <canvas id="rd-canvas"></canvas>
 
-  <div class="site">
-    <header>
-      <h1>KAKUZENSKY</h1>
-      <p>Developer • Content Creator • Designer</p>
+  <div class="site fade-in">
+
+    <header class="fade-in">
+      <h1 class="fade-in">KAKUZENSKY</h1>
+      <p class="fade-in">Developer • Content Creator • Designer</p>
     </header>
 
     <main>
-      <section class="section">
-        <h2>👨‍💻 Projects I Helped Develop</h2>
+
+      <!-- PROJECTS SECTION -->
+      <section class="section fade-in">
+        <h2 class="fade-in">Projects I Helped Develop</h2>
+
         <div class="projects">
-          <a href="#" class="card">
+          <a href="#" class="card fly-left">
             <h3>Project One</h3>
             <p>Role & brief: frontend, API integration, performance tuning.</p>
           </a>
 
-          <a href="#" class="card">
+          <a href="#" class="card fly-left">
             <h3>Project Two</h3>
             <p>Role & brief: accessibility improvements & tests.</p>
           </a>
 
-          <a href="#" class="card">
+          <a href="#" class="card fly-left">
             <h3>Project Three</h3>
             <p>Role & brief: UI design, animations and build pipelines.</p>
           </a>
         </div>
       </section>
 
-      <section class="section">
-        <h2>📺 Content Platforms</h2>
+      <!-- CONTENT PLATFORMS SECTION -->
+      <section class="section fade-in">
+        <h2 class="fade-in">Content Platforms</h2>
 
-        <div class="content-links">
-          <a href="https://twitch.tv/scartrox_" target="_blank" class="btn twitch">Visit Twitch</a>
-          <a href="https://www.youtube.com/@Scartrox" target="_blank" class="btn youtube">Visit YouTube</a>
+        <div class="content-links fade-in">
+          <a href="https://twitch.tv/scartrox_" target="_blank" class="btn twitch fly-left">Twitch</a>
+          <a href="https://www.youtube.com/@Scartrox" target="_blank" class="btn youtube fly-right">YouTube</a>
         </div>
 
-    <div class="video-section">
-        <h3>Latest Videos</h3>
-        <div class="videos">
+        <div class="video-section fade-in">
+          <h3 class="fade-in">Latest Videos</h3>
+
+          <div class="videos">
+
             <iframe 
-                src="https://www.youtube.com/embed/8y7bJj9TRd4?si=li7IfefLFiFIOHLD"
-                title="YouTube video"
-                allowfullscreen>
+              class="fly-right"
+              src="https://www.youtube.com/embed/8y7bJj9TRd4?si=li7IfefLFiFIOHLD"
+              title="YouTube video"
+              allowfullscreen>
             </iframe>
 
             <iframe 
-                src="https://www.youtube.com/embed/ZggQHPqcbB0?si=BKoWMyePair0QYSB"
-                title="YouTube video"
-                allowfullscreen>
+              class="fly-right"
+              src="https://www.youtube.com/embed/ZggQHPqcbB0?si=BKoWMyePair0QYSB"
+              title="YouTube video"
+              allowfullscreen>
             </iframe>
+
+          </div>
         </div>
-    </div>
+
       </section>
     </main>
 
-    <footer>
+    <footer class="fade-in">
       <p>© 2025 KAKUZENSKY • Portfolio Site</p>
-      <div class="controls">
+
+      <div class="controls fade-in">
         <button id="pauseBtn">Pause</button>
         <button id="clearBtn">Clear</button>
       </div>
     </footer>
+
   </div>
 
   <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
