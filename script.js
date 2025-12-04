@@ -1,102 +1,145 @@
-// ---- Reaction Diffusion WebGL Shader Background ----
+/* -----------------------------
+   Reaction Diffusion Background
+------------------------------ */
 
 const canvas = document.getElementById("rd");
-const gl = canvas.getContext("webgl");
+const ctx = canvas.getContext("2d");
 
-canvas.width = innerWidth;
-canvas.height = innerHeight;
-
-// Vertex shader
-const vs = `
-attribute vec2 p;
-void main(){
-    gl_Position = vec4(p, 0.0, 1.0);
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-`;
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
-// Fragment shader (Gray-Scott simulation)
-const fs = `
-precision highp float;
-uniform float time;
-uniform vec2 resolution;
+let w = canvas.width;
+let h = canvas.height;
 
-vec3 palette(float t) {
-    vec3 c1 = vec3(0.035, 0.035, 0.035); // #090909
-    vec3 c2 = vec3(0.129, 0.078, 0.114); // #21141D
-    vec3 c3 = vec3(0.180, 0.105, 0.082); // #2E1B15
-    vec3 c4 = vec3(0.258, 0.184, 0.129); // #422F21
-    vec3 c5 = vec3(0.337, 0.204, 0.169); // #56342B
-    vec3 c6 = vec3(0.306, 0.082, 0.149); // #4E1526
-    vec3 c7 = vec3(0.353, 0.157, 0.169); // #5A282B
+// Gray–Scott buffers
+let A, B;
 
-    if (t < 0.16) return mix(c1, c2, t/0.16);
-    if (t < 0.32) return mix(c2, c3, (t-0.16)/0.16);
-    if (t < 0.48) return mix(c3, c4, (t-0.32)/0.16);
-    if (t < 0.64) return mix(c4, c5, (t-0.48)/0.16);
-    if (t < 0.80) return mix(c5, c6, (t-0.64)/0.16);
-    return mix(c6, c7, (t-0.80)/0.20);
+function init() {
+  w = canvas.width;
+  h = canvas.height;
+
+  A = new Float32Array(w * h);
+  B = new Float32Array(w * h);
+
+  // initialize A = 1 everywhere
+  for (let i = 0; i < A.length; i++) A[i] = 1;
+
+  // drop small random spots of B
+  for (let i = 0; i < 500; i++) {
+    let x = Math.floor(Math.random() * w);
+    let y = Math.floor(Math.random() * h);
+    let idx = x + y * w;
+    B[idx] = 1;
+  }
 }
 
-void main(){
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
+function lap(arr, x, y) {
+  let idx = x + y * w;
 
-    float t = time * 0.08;
-    float x = uv.x + sin(uv.y*3.0 + t) * 0.02;
-    float y = uv.y + cos(uv.x*3.0 + t) * 0.02;
+  let sum =
+    arr[idx] * -1 +
+    arr[idx - 1] * 0.2 +
+    arr[idx + 1] * 0.2 +
+    arr[idx - w] * 0.2 +
+    arr[idx + w] * 0.2;
 
-    float v = sin((x + y) * 8.0 + t) * 0.5 + 0.5;
-
-    gl_FragColor = vec4(palette(v), 1.0);
-}
-`;
-
-function createShader(type, source) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, source);
-    gl.compileShader(s);
-    return s;
+  return sum;
 }
 
-const program = gl.createProgram();
-gl.attachShader(program, createShader(gl.VERTEX_SHADER, vs));
-gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fs));
-gl.linkProgram(program);
-gl.useProgram(program);
+function updateRD() {
+  let feed = 0.034;
+  let kill = 0.062;
+  let Da = 1;
+  let Db = 0.5;
 
-const buffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const newA = new Float32Array(w * h);
+  const newB = new Float32Array(w * h);
 
-const pLoc = gl.getAttribLocation(program, "p");
-gl.enableVertexAttribArray(pLoc);
-gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let i = x + y * w;
 
-const timeLoc = gl.getUniformLocation(program, "time");
-const resLoc = gl.getUniformLocation(program, "resolution");
+      let a = A[i];
+      let b = B[i];
 
-function loop(t){
-    gl.uniform1f(timeLoc, t * 0.001);
-    gl.uniform2f(resLoc, canvas.width, canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    requestAnimationFrame(loop);
+      newA[i] = a + (Da * lap(A, x, y) - a * b * b + feed * (1 - a)) * 1.2;
+      newB[i] = b + (Db * lap(B, x, y) + a * b * b - (kill + feed) * b) * 1.2;
+
+      newA[i] = Math.max(0, Math.min(1, newA[i]));
+      newB[i] = Math.max(0, Math.min(1, newB[i]));
+    }
+  }
+
+  A = newA;
+  B = newB;
 }
-loop();
 
-// Handle resizing
-addEventListener("resize", () => {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
-    gl.viewport(0, 0, canvas.width, canvas.height);
-});
-// ---- Scroll Animations ----
-const observer = new IntersectionObserver((entries) => {
+function drawRD() {
+  const imageData = ctx.createImageData(w, h);
+  const data = imageData.data;
+
+  for (let i = 0; i < A.length; i++) {
+    let v = Math.floor((A[i] - B[i]) * 255);
+
+    let idx = i * 4;
+    data[idx] = v + 50;       
+    data[idx + 1] = v;      
+    data[idx + 2] = v + 30;  
+    data[idx + 3] = 255;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+let running = true;
+
+function animate() {
+  if (running) {
+    updateRD();
+    drawRD();
+  }
+  requestAnimationFrame(animate);
+}
+
+document.getElementById("pauseBtn").onclick = () => {
+  running = !running;
+  document.getElementById("pauseBtn").innerText = running ? "Pause" : "Resume";
+};
+
+document.getElementById("clearBtn").onclick = () => {
+  init();
+};
+
+init();
+animate();
+
+/* -----------------------------
+   Reveal-on-scroll Animations
+------------------------------ */
+
+const revealElements = document.querySelectorAll(".section, .card, .videos iframe");
+
+const observer = new IntersectionObserver(
+  entries => {
     entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-        }
+      if (entry.isIntersecting) {
+        entry.target.classList.add("visible");
+      }
     });
-}, { threshold: 0.2 });
+  },
+  { threshold: 0.2 }
+);
 
-document.querySelectorAll(".fade-in, .fly-left, .fly-right")
-    .forEach(el => observer.observe(el));
+revealElements.forEach(el => observer.observe(el));
 
+/* -----------------------------
+   Soft Parallax
+------------------------------ */
+window.addEventListener("scroll", () => {
+  let offset = window.scrollY * 0.2;
+  canvas.style.transform = `translateY(${offset}px)`;
+});
