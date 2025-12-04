@@ -61,6 +61,36 @@ html,body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+/* Reveal animation base */
+.section,
+.card,
+.videos iframe {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+/* When visible */
+.visible {
+  opacity: 1;
+  transform: translateY(0px);
+}
+
+/* Cards flying in slightly sideways */
+.card {
+  transform: translateX(-40px);
+}
+.card.visible {
+  transform: translateX(0);
+}
+
+/* Videos fly in from the right */
+.videos iframe {
+  transform: translateX(40px);
+}
+.videos iframe.visible {
+  transform: translateX(0);
+}
 
 /* Fullscreen canvas sits behind all content */
 #rd-canvas {
@@ -211,6 +241,7 @@ footer {
   .videos { flex-direction: column; }
   header { padding: 28px 16px; }
 }
+
 
 
 
