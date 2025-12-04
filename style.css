@@ -1,5 +1,5 @@
 :root{
-  --bg: #0;
+  --bg: #transparent;
   --header: #21141D;
   --card: #2E1B15;
   --card-border: #422F21;
@@ -159,5 +159,6 @@ footer {
   header { padding: 28px 16px; }
   .projects { grid-template-columns: 1fr; }
 }
+
 
 
