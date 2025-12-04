@@ -19,6 +19,38 @@
     pointer-events: none;
     background: #090909; /* fallback */
 }
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 1s ease, transform 1s ease;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fly-left {
+    opacity: 0;
+    transform: translateX(-60px);
+    transition: opacity 1s ease, transform 1s ease;
+}
+
+.fly-left.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.fly-right {
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 1s ease, transform 1s ease;
+}
+
+.fly-right.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
 
 html,body {
   height: 100%;
@@ -179,5 +211,6 @@ footer {
   .videos { flex-direction: column; }
   header { padding: 28px 16px; }
 }
+
 
 
