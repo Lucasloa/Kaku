@@ -88,3 +88,15 @@ addEventListener("resize", () => {
     canvas.height = innerHeight;
     gl.viewport(0, 0, canvas.width, canvas.height);
 });
+// ---- Scroll Animations ----
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+        }
+    });
+}, { threshold: 0.2 });
+
+document.querySelectorAll(".fade-in, .fly-left, .fly-right")
+    .forEach(el => observer.observe(el));
+
