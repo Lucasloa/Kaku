@@ -11,27 +11,6 @@ function resizeCanvas() {
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
-const btnContent = document.getElementById("btnContent");
-const btnWork = document.getElementById("btnWork");
-const workSection = document.getElementById("workSection");
-const contentSection = document.getElementById("contentSection");
-
-// Initially show Work, hide Content
-workSection.style.display = "block";
-contentSection.style.display = "none";
-
-// Button click handlers
-btnContent.addEventListener("click", () => {
-  workSection.style.display = "none";
-  contentSection.style.display = "block";
-  contentSection.scrollIntoView({ behavior: "smooth" });
-});
-
-btnWork.addEventListener("click", () => {
-  contentSection.style.display = "none";
-  workSection.style.display = "block";
-  workSection.scrollIntoView({ behavior: "smooth" });
-});
 
 let w = canvas.width;
 let h = canvas.height;
@@ -164,4 +143,3 @@ window.addEventListener("scroll", () => {
   let offset = window.scrollY * 0.2;
   canvas.style.transform = `translateY(${offset}px)`;
 });
-
