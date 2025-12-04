@@ -12,12 +12,12 @@
 /* Reaction Diffusion Canvas Background */
 #rd {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
+    background: #090909; /* fallback */
 }
 
 html,body {
@@ -179,4 +179,5 @@ footer {
   .videos { flex-direction: column; }
   header { padding: 28px 16px; }
 }
+
 
