@@ -1,119 +1,90 @@
-// Reaction–Diffusion Background (Gray-Scott)
+// ---- Reaction Diffusion WebGL Shader Background ----
 
 const canvas = document.getElementById("rd");
-const ctx = canvas.getContext("2d");
+const gl = canvas.getContext("webgl");
+
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-let w = canvas.width;
-let h = canvas.height;
+// Vertex shader
+const vs = `
+attribute vec2 p;
+void main(){
+    gl_Position = vec4(p, 0.0, 1.0);
+}
+`;
 
-let A = [], B = [];
-let dA = 1.0, dB = 0.5;
-let feed = 0.037;
-let kill = 0.06;
+// Fragment shader (Gray-Scott simulation)
+const fs = `
+precision highp float;
+uniform float time;
+uniform vec2 resolution;
 
-// Color palette (your colors)
-const palette = [
-    "#090909", "#21141D", "#2E1B15",
-    "#422F21", "#56342B", "#4E1526", "#5A282B"
-];
+vec3 palette(float t) {
+    vec3 c1 = vec3(0.035, 0.035, 0.035); // #090909
+    vec3 c2 = vec3(0.129, 0.078, 0.114); // #21141D
+    vec3 c3 = vec3(0.180, 0.105, 0.082); // #2E1B15
+    vec3 c4 = vec3(0.258, 0.184, 0.129); // #422F21
+    vec3 c5 = vec3(0.337, 0.204, 0.169); // #56342B
+    vec3 c6 = vec3(0.306, 0.082, 0.149); // #4E1526
+    vec3 c7 = vec3(0.353, 0.157, 0.169); // #5A282B
 
-function init() {
-    for (let x = 0; x < w; x++) {
-        A[x] = [];
-        B[x] = [];
-        for (let y = 0; y < h; y++) {
-            A[x][y] = 1;
-            B[x][y] = 0;
-        }
-    }
-
-    // Seed area in center
-    for (let x = w/2 - 20; x < w/2 + 20; x++) {
-        for (let y = h/2 - 20; y < h/2 + 20; y++) {
-            B[x][y] = 1;
-        }
-    }
+    if (t < 0.16) return mix(c1, c2, t/0.16);
+    if (t < 0.32) return mix(c2, c3, (t-0.16)/0.16);
+    if (t < 0.48) return mix(c3, c4, (t-0.32)/0.16);
+    if (t < 0.64) return mix(c4, c5, (t-0.48)/0.16);
+    if (t < 0.80) return mix(c5, c6, (t-0.64)/0.16);
+    return mix(c6, c7, (t-0.80)/0.20);
 }
 
-function lap(arr, x, y) {
-    return (
-        arr[x][y] * -1 +
-        arr[x - 1]?.[y] * 0.2 +
-        arr[x + 1]?.[y] * 0.2 +
-        arr[x]?.[y - 1] * 0.2 +
-        arr[x]?.[y + 1] * 0.2
-    );
+void main(){
+    vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+    float t = time * 0.08;
+    float x = uv.x + sin(uv.y*3.0 + t) * 0.02;
+    float y = uv.y + cos(uv.x*3.0 + t) * 0.02;
+
+    float v = sin((x + y) * 8.0 + t) * 0.5 + 0.5;
+
+    gl_FragColor = vec4(palette(v), 1.0);
+}
+`;
+
+function createShader(type, source) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    return s;
 }
 
-function update() {
-    let nextA = [];
-    let nextB = [];
+const program = gl.createProgram();
+gl.attachShader(program, createShader(gl.VERTEX_SHADER, vs));
+gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fs));
+gl.linkProgram(program);
+gl.useProgram(program);
 
-    for (let x = 1; x < w - 1; x++) {
-        nextA[x] = [];
-        nextB[x] = [];
-        for (let y = 1; y < h - 1; y++) {
-            let a = A[x][y];
-            let b = B[x][y];
+const buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
 
-            let reaction = a * b * b;
+const pLoc = gl.getAttribLocation(program, "p");
+gl.enableVertexAttribArray(pLoc);
+gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
 
-            nextA[x][y] = a + (dA * lap(A, x, y) - reaction + feed * (1 - a));
-            nextB[x][y] = b + (dB * lap(B, x, y) + reaction - (kill + feed) * b);
+const timeLoc = gl.getUniformLocation(program, "time");
+const resLoc = gl.getUniformLocation(program, "resolution");
 
-            nextA[x][y] = Math.min(Math.max(nextA[x][y], 0), 1);
-            nextB[x][y] = Math.min(Math.max(nextB[x][y], 0), 1);
-        }
-    }
-
-    A = nextA;
-    B = nextB;
-}
-
-function draw() {
-    let img = ctx.createImageData(w, h);
-
-    for (let i = 0; i < img.data.length; i += 4) {
-        let x = (i / 4) % w;
-        let y = Math.floor(i / 4 / w);
-
-        let val = B[x]?.[y] || 0; // intensity
-
-        // Map intensity (0 → 6) to palette
-        let idx = Math.floor(val * (palette.length - 1));
-        idx = Math.max(0, Math.min(idx, palette.length - 1));
-
-        let c = palette[idx];
-
-        let r = parseInt(c.substring(1, 3), 16);
-        let g = parseInt(c.substring(3, 5), 16);
-        let b = parseInt(c.substring(5, 7), 16);
-
-        img.data[i] = r;
-        img.data[i + 1] = g;
-        img.data[i + 2] = b;
-        img.data[i + 3] = 255;
-    }
-
-    ctx.putImageData(img, 0, 0);
-}
-
-function loop() {
-    for (let i = 0; i < 8; i++) update();
-    draw();
+function loop(t){
+    gl.uniform1f(timeLoc, t * 0.001);
+    gl.uniform2f(resLoc, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     requestAnimationFrame(loop);
 }
-
-init();
 loop();
 
-// Resize listener
-window.addEventListener("resize", () => {
+// Handle resizing
+addEventListener("resize", () => {
     canvas.width = innerWidth;
     canvas.height = innerHeight;
-    w = canvas.width;
-    h = canvas.height;
-    init();
+    gl.viewport(0, 0, canvas.width, canvas.height);
 });
