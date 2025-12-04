@@ -12,11 +12,11 @@ let running = true;
 // Initialize canvas and buffers
 function resizeCanvas() {
   w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight + document.body.scrollHeight; // oversized to cover scrolling
-
+  h = canvas.height = window.innerHeight; // always viewport
   A = new Float32Array(w * h).fill(1);
   B = new Float32Array(w * h).fill(0);
 
+  // Initial random B spots
   addRandomBSpots(500);
 }
 
@@ -49,9 +49,11 @@ function updateRD() {
       const i = x + y * w;
       const a = A[i], b = B[i];
 
+      // Gray-Scott Reaction-Diffusion equations
       const aNext = a + (Da * lap(A, x, y) - a * b * b + feed * (1 - a));
       const bNext = b + (Db * lap(B, x, y) + a * b * b - (kill + feed) * b);
 
+      // Clamp values to [0,1]
       newA[i] = Math.min(Math.max(aNext, 0), 1);
       newB[i] = Math.min(Math.max(bNext, 0), 1);
     }
@@ -61,29 +63,29 @@ function updateRD() {
   B = newB;
 }
 
-// Draw reaction-diffusion (gray-scale / soft mid-tone)
+// Draw reaction-diffusion
 function drawRD() {
   const imageData = ctx.createImageData(w, h);
   const data = imageData.data;
 
   for (let i = 0; i < A.length; i++) {
     const diff = A[i] - B[i];
-    // Gray-scale mid-tone mapping (safe, flicker-free)
-    const v = Math.floor(Math.min(255, Math.max(0, (diff * 128) + 128)));
+    // Map to safe mid-range color to reduce flicker
+    const v = Math.floor((diff * 100) + 128); // softer scaling
     const idx = i * 4;
-    data[idx] = v + 30;      // Red
-    data[idx + 1] = v;       // Green
-    data[idx + 2] = v + 15;  // Blue
+    data[idx] = Math.max(0, Math.min(255, v + 20));   // Red
+    data[idx + 1] = Math.max(0, Math.min(255, v));    // Green
+    data[idx + 2] = Math.max(0, Math.min(255, v + 10)); // Blue
     data[idx + 3] = 255;
   }
 
   ctx.putImageData(imageData, 0, 0);
 }
 
-// Add B spots periodically for continuous evolution
+// Add B spots every few seconds
 setInterval(() => addRandomBSpots(50), 2500);
 
-// Animation loop
+// Main animation loop
 function animate() {
   if (running) {
     updateRD();
