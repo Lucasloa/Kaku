@@ -12,48 +12,67 @@ let running = true;
 // Initialize canvas and buffers
 function resizeCanvas() {
   w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight; // always viewport
+  h = canvas.height = window.innerHeight;
   A = new Float32Array(w * h).fill(1);
   B = new Float32Array(w * h).fill(0);
 
-  // Initial random B spots
-  addRandomBSpots(500);
+  // Large initial patches for pattern growth
+  addRandomBSpots(3000, 20);
 }
 
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// Add random B spots for evolution
-function addRandomBSpots(count = 50) {
+// Add B spots for evolution
+function addRandomBSpots(count = 50, size = 4) {
   for (let i = 0; i < count; i++) {
-    const x = Math.floor(Math.random() * w);
-    const y = Math.floor(Math.random() * h);
-    B[x + y * w] = 1;
+    const cx = Math.floor(Math.random() * w);
+    const cy = Math.floor(Math.random() * h);
+
+    for (let dx = -size; dx <= size; dx++) {
+      for (let dy = -size; dy <= size; dy++) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x > 1 && y > 1 && x < w - 1 && y < h - 1) {
+          B[x + y * w] = 1;
+        }
+      }
+    }
   }
 }
 
-// Laplacian function for diffusion
+// Laplacian function (stronger diffusion → bigger patterns)
 function lap(arr, x, y) {
   const idx = x + y * w;
-  return arr[idx] * -1 + arr[idx - 1] * 0.2 + arr[idx + 1] * 0.2 + arr[idx - w] * 0.2 + arr[idx + w] * 0.2;
+  return (
+    arr[idx] * -1 +
+    arr[idx - 1] * 0.25 +
+    arr[idx + 1] * 0.25 +
+    arr[idx - w] * 0.25 +
+    arr[idx + w] * 0.25
+  );
 }
 
 // Update reaction-diffusion
 function updateRD() {
-  const feed = 0.034, kill = 0.062, Da = 1, Db = 0.5;
+  // **The magic numbers**
+  const feed = 0.0275;   // lower feed = slower, smoother, larger patterns
+  const kill = 0.062;    // tuned to form long worm-like structures
+  const Da = 1.0;
+  const Db = 0.5;
+
   const newA = new Float32Array(w * h);
   const newB = new Float32Array(w * h);
 
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
       const i = x + y * w;
-      const a = A[i], b = B[i];
+      const a = A[i];
+      const b = B[i];
 
-      // Gray-Scott Reaction-Diffusion equations
       const aNext = a + (Da * lap(A, x, y) - a * b * b + feed * (1 - a));
       const bNext = b + (Db * lap(B, x, y) + a * b * b - (kill + feed) * b);
 
-      // Clamp values to [0,1]
       newA[i] = Math.min(Math.max(aNext, 0), 1);
       newB[i] = Math.min(Math.max(bNext, 0), 1);
     }
@@ -65,34 +84,31 @@ function updateRD() {
 
 // Draw reaction-diffusion
 function drawRD() {
-  const imageData = ctx.createImageData(w, h);
-  const data = imageData.data;
+  const img = ctx.createImageData(w, h);
+  const d = img.data;
 
   for (let i = 0; i < A.length; i++) {
-    const diff = A[i] - B[i];
-    // Map to safe mid-range color to reduce flicker
-    const v = Math.floor((diff * 100) + 128); // softer scaling
+    const v = Math.floor((A[i] - B[i]) * 180 + 128); // stronger contrast
     const idx = i * 4;
-    data[idx] = Math.max(0, Math.min(255, v + 20));   // Red
-    data[idx + 1] = Math.max(0, Math.min(255, v));    // Green
-    data[idx + 2] = Math.max(0, Math.min(255, v + 10)); // Blue
-    data[idx + 3] = 255;
+    d[idx] = v + 20;
+    d[idx + 1] = v - 10;
+    d[idx + 2] = v + 5;
+    d[idx + 3] = 255;
   }
 
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(img, 0, 0);
 }
 
-// Add B spots every few seconds
-setInterval(() => addRandomBSpots(50), 2500);
+// Periodically seed new B
+setInterval(() => addRandomBSpots(50, 6), 2000);
 
-// Main animation loop
+// Main loop
 function animate() {
   if (running) {
     updateRD();
     drawRD();
   }
-  // Soft parallax scroll
-  canvas.style.transform = `translateY(${window.scrollY * 0.2}px)`;
+  canvas.style.transform = `translateY(${window.scrollY * 0.15}px)`;
   requestAnimationFrame(animate);
 }
 animate();
@@ -106,7 +122,7 @@ document.getElementById("pauseBtn").onclick = () => {
 };
 
 document.getElementById("clearBtn").onclick = () => {
-  addRandomBSpots(500);
+  addRandomBSpots(3000, 20);
 };
 
 /* -----------------------------
