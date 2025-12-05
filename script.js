@@ -1,29 +1,33 @@
-/* reaction-diffusion.js
-   Fast version: low-res sim → offscreen canvas → scaled draw
-*/
+/* reaction-diffusion.js – Firefox-safe, oversized canvas, brown/purple palette */
 
-const canvas = document.getElementById('rd');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("rd");
+const ctx = canvas.getContext("2d");
 
-// OFFSCREEN CANVAS for simulation rendering
-const simCanvas = document.createElement('canvas');
-const simCtx = simCanvas.getContext('2d');
+// Offscreen canvas (fixes Firefox flicker)
+const offCanvas = document.createElement("canvas");
+const offCtx = offCanvas.getContext("2d");
 
 let canvasW, canvasH;
-let simW = 260;
-let simH = 150;
+let simW = 240;
+let simH = 140;
 
 let A, B, A2, B2;
 let running = true;
 
 function resizeAll() {
-  canvasW = Math.round(window.innerWidth * 1.5);
-  canvasH = Math.round(window.innerHeight * 1.5);
+  // OVERSIZED CANVAS — prevents white gaps when scrolling
+  canvasW = Math.round(window.innerWidth * 2.0);
+  canvasH = Math.round(window.innerHeight * 2.0);
+
   canvas.width = canvasW;
   canvas.height = canvasH;
 
-  simCanvas.width = simW;
-  simCanvas.height = simH;
+  offCanvas.width = canvasW;
+  offCanvas.height = canvasH;
+
+  const aspect = canvasW / canvasH;
+  simW = Math.max(200, Math.min(900, Math.round(400 * aspect)));
+  simH = Math.max(120, Math.round(simW / aspect));
 
   A = new Float32Array(simW * simH).fill(1.0);
   B = new Float32Array(simW * simH).fill(0.0);
@@ -33,10 +37,10 @@ function resizeAll() {
   seedSim();
 }
 
-window.addEventListener('resize', resizeAll);
+window.addEventListener("resize", resizeAll);
 resizeAll();
 
-// seed restart
+// Seed with center blob + noise
 function seedSim() {
   for (let i = 0; i < simW * simH; i++) {
     A[i] = 1.0;
@@ -48,14 +52,21 @@ function seedSim() {
 
   for (let y = cy - 6; y <= cy + 6; y++) {
     for (let x = cx - 12; x <= cx + 12; x++) {
-      const idx = x + y * simW;
-      B[idx] = 0.5 + Math.random() * 0.4;
-      A[idx] = 0.3 + Math.random() * 0.6;
+      const i = x + y * simW;
+      if (i >= 0 && i < simW * simH) {
+        B[i] = 0.6 + Math.random() * 0.4;
+        A[i] = 0.3 + Math.random() * 0.7;
+      }
     }
+  }
+
+  for (let i = 0; i < 60; i++) {
+    const rx = Math.floor(Math.random() * simW);
+    const ry = Math.floor(Math.random() * simH);
+    B[rx + ry * simW] = 0.7 * Math.random();
   }
 }
 
-// Laplace
 function laplace(arr, x, y) {
   const i = x + y * simW;
   return (
@@ -67,7 +78,6 @@ function laplace(arr, x, y) {
   );
 }
 
-// Gray-Scott
 function stepSim() {
   const dA = 1.0,
     dB = 0.5;
@@ -77,81 +87,120 @@ function stepSim() {
   for (let y = 1; y < simH - 1; y++) {
     for (let x = 1; x < simW - 1; x++) {
       const i = x + y * simW;
-      const a = A[i];
-      const b = B[i];
+      const a = A[i],
+        b = B[i];
       const reaction = a * b * b;
 
-      let aN = a + (dA * laplace(A, x, y) - reaction + feed * (1 - a));
-      let bN = b + (dB * laplace(B, x, y) + reaction - (kill + feed) * b);
+      A2[i] =
+        Math.min(
+          1,
+          Math.max(
+            0,
+            a + (dA * laplace(A, x, y) - reaction + feed * (1 - a)) * 1.0
+          )
+        );
 
-      A2[i] = Math.min(1, Math.max(0, aN));
-      B2[i] = Math.min(1, Math.max(0, bN));
+      B2[i] =
+        Math.min(
+          1,
+          Math.max(
+            0,
+            b + (dB * laplace(B, x, y) + reaction - (kill + feed) * b) * 1.0
+          )
+        );
     }
   }
 
-  let t = A;
+  let tmp = A;
   A = A2;
-  A2 = t;
+  A2 = tmp;
 
-  t = B;
+  tmp = B;
   B = B2;
-  B2 = t;
+  B2 = tmp;
 }
 
-// fast render → small sim canvas → scaled
-function renderSim() {
-  const img = simCtx.createImageData(simW, simH);
-  const d = img.data;
+function renderSimToCanvas() {
+  const img = offCtx.createImageData(canvasW, canvasH);
+  const data = img.data;
+
+  const sx = canvasW / simW;
+  const sy = canvasH / simH;
 
   for (let y = 0; y < simH; y++) {
     for (let x = 0; x < simW; x++) {
       const i = x + y * simW;
+
       const diff = A[i] - B[i];
-      const v = (diff * 128) + 128;
 
-      const r = Math.min(255, Math.max(0, v + 30));
-      const g = Math.min(255, Math.max(0, v));
-      const b = Math.min(255, Math.max(0, v + 15));
+      // ORIGINAL BROWN/PURPLE PALETTE (restored)
+      const tone = Math.floor((diff * 150) + 120);
+      const r = Math.min(255, tone + 25); 
+      const g = Math.min(255, tone - 20);
+      const b = Math.min(255, tone + 60);
 
-      const p = i * 4;
-      d[p] = r;
-      d[p + 1] = g;
-      d[p + 2] = b;
-      d[p + 3] = 255;
+      const px = Math.floor(x * sx);
+      const py = Math.floor(y * sy);
+      const wBlock = Math.ceil(sx);
+      const hBlock = Math.ceil(sy);
+
+      for (let yy = 0; yy < hBlock; yy++) {
+        const row = (py + yy) * canvasW * 4;
+
+        for (let xx = 0; xx < wBlock; xx++) {
+          const col = (px + xx) * 4;
+          const idx = row + col;
+          if (idx + 3 < data.length) {
+            data[idx] = r;
+            data[idx + 1] = g;
+            data[idx + 2] = b;
+            data[idx + 3] = 255;
+          }
+        }
+      }
     }
   }
 
-  simCtx.putImageData(img, 0, 0);
+  offCtx.putImageData(img, 0, 0);
 
-  ctx.drawImage(simCanvas, 0, 0, canvasW, canvasH);
+  // Draw offscreen result to main canvas — prevents flickering
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.drawImage(offCanvas, 0, 0);
 }
 
-// keep it alive
+// Add random spots every few seconds
 setInterval(() => {
-  for (let i = 0; i < 30; i++) {
-    const r = Math.floor(Math.random() * simW * simH);
-    B[r] = 0.4 + Math.random() * 0.5;
+  for (let i = 0; i < 40; i++) {
+    const rx = Math.floor(Math.random() * simW);
+    const ry = Math.floor(Math.random() * simH);
+    B[rx + ry * simW] = 0.6 + Math.random() * 0.4;
   }
-}, 1800);
+}, 2200);
 
-// loop
 function loop() {
   if (running) {
     stepSim();
     stepSim();
-    renderSim();
+    renderSimToCanvas();
   }
 
-  const offsetY = window.scrollY * 0.15;
+  // Parallax — canvas is so oversized that no blank area can appear
+  const offsetY = window.scrollY * 0.18;
   canvas.style.transform = `translateY(${offsetY}px)`;
 
   requestAnimationFrame(loop);
 }
+
 loop();
 
-// controls
-document.getElementById('pauseBtn').addEventListener('click', () => {
+// Buttons
+document.getElementById("pauseBtn").addEventListener("click", () => {
   running = !running;
-  document.getElementById('pauseBtn').textContent = running ? 'Pause' : 'Resume';
+  document.getElementById("pauseBtn").textContent = running
+    ? "Pause"
+    : "Resume";
 });
-document.getElementById('clearBtn').addEventListener('click', seedSim);
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  seedSim();
+});
