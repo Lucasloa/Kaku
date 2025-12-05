@@ -3,32 +3,35 @@
   --header: #21141D;
   --card: #2E1B15;
   --card-border: #422F21;
-  --accent-a: #56342B; 
-  --accent-b: #4E1526; 
+  --accent-a: #56342B; /* twitch-ish */
+  --accent-b: #4E1526; /* youtube-ish */
   --muted: #CFC3BF;
 }
 
 * { box-sizing: border-box; }
 
-/* Reaction Diffusion Canvas Background */
+/* Reaction Diffusion Canvas Background (oversized and centered) */
 #rd {
-    position: fixed;
-    inset: 0;
-    width: 130%;
-    height: 130%;
-    top: -15%;
-    left: -15%;
-    z-index: -2;
-    pointer-events: none;
-    background: var(--bg);
+  position: fixed;
+  top: -20%;
+  left: -20%;
+  width: 140vw;      /* oversized so parallax/scroll never exposes gaps */
+  height: 140vh;
+  z-index: -2;
+  pointer-events: none;
+  background: var(--bg);
+  transform: translateY(0);
 }
 
+/* Page base */
 html, body {
   height: 100%;
   margin: 0;
   background: transparent;
   color: var(--muted);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Foreground site container */
@@ -43,24 +46,25 @@ html, body {
 /* Header */
 header {
   background: linear-gradient(180deg, rgba(33,20,29,0.95), rgba(33,20,29,0.85));
+  color: #fff;
   text-align: center;
-  padding: 40px 20px;
+  padding: 36px 18px;
   border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
 header h1 { margin: 0; font-size: 2rem; letter-spacing: 0.6px; }
-header p { margin: 8px 0 0; opacity: 0.9; }
+header p { margin: 6px 0 0; opacity: 0.95; }
 
-/* Nav Buttons */
+/* Header Nav Buttons */
 .nav-buttons {
-  margin-top: 16px;
+  margin-top: 14px;
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 12px;
 }
 .nav-buttons button {
-  padding: 8px 18px;
-  background: var(--card-border);
+  padding: 8px 14px;
+  background-color: var(--card-border);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -69,93 +73,55 @@ header p { margin: 8px 0 0; opacity: 0.9; }
 }
 .nav-buttons button:hover { background-color: var(--accent-a); }
 
-/* Layout */
-main { padding: 36px 20px; max-width: 1100px; margin: 0 auto; flex: 1; }
+/* Main layout */
+main { padding: 28px 18px; max-width: 1100px; margin: 0 auto; flex: 1; }
 
-.section { margin-bottom: 36px; }
+/* Sections */
+.section { margin-bottom: 32px; }
 
-.section-title {
-    font-size: 2rem;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-/* Projects Grid */
+/* Projects grid & cards */
 .projects {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-/* Project Cards */
 .card {
   background: linear-gradient(180deg, rgba(46,27,21,0.98), rgba(46,27,21,0.92));
   border: 1px solid var(--card-border);
-  padding: 18px;
+  padding: 16px;
   border-radius: 10px;
   text-decoration: none;
   color: var(--muted);
-  box-shadow: 0 6px 14px rgba(5,5,5,0.5);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 40px rgba(5,5,5,0.6);
-}
+.card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(0,0,0,0.55); }
 
-/* GAMES DEVELOPED SECTION */
-#games {
-    width: 100%;
-    padding: 60px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-}
-
+/* Games section */
 .game-card {
-    display: flex;
-    flex-direction: row;
-    background: var(--card);
-    border: 2px solid var(--card-border);
-    border-radius: 12px;
-    padding: 20px;
-    gap: 20px;
-    width: 90%;
-    max-width: 1000px;
-    margin: 0 auto;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 18px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 10px auto;
 }
+.game-media { width: 48%; }
+.game-title { margin: 0 0 8px; font-size: 1.3rem; color: var(--muted); }
+.game-gif { width: 100%; border-radius: 10px; border: 2px solid rgba(255,255,255,0.04); display:block; }
+.game-description { width: 52%; color: var(--muted); line-height: 1.5; }
 
-.game-media {
-    width: 50%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.game-title {
-    font-size: 1.6rem;
-    color: var(--muted);
-}
-
-.game-gif {
-    width: 100%;
-    border-radius: 12px;
-    border: 2px solid var(--accent-a);
-}
-
-.game-description {
-    width: 50%;
-    font-size: 1.1rem;
-    color: var(--muted);
-    line-height: 1.5rem;
-}
-
-/* Content Buttons */
-.content-links { margin-bottom: 16px; }
+/* Content links and videos */
+.content-links { margin-bottom: 12px; }
 .btn {
   display: inline-block;
-  padding: 10px 16px;
-  margin-right: 10px;
+  padding: 10px 14px;
+  margin-right: 8px;
   border-radius: 8px;
   color: white;
   text-decoration: none;
@@ -164,27 +130,20 @@ main { padding: 36px 20px; max-width: 1100px; margin: 0 auto; flex: 1; }
 .btn.twitch { background: var(--accent-a); }
 .btn.youtube { background: var(--accent-b); }
 
-.videos { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-iframe {
-  width: 320px;
-  height: 180px;
-  border-radius: 8px;
-  border: none;
-}
+.video-section .videos { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+iframe { width: 320px; height: 180px; border-radius: 8px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
 
 /* Footer */
 footer {
   padding: 18px 20px;
   text-align: center;
   background: transparent;
-  border-top: 1px solid rgba(255,255,255,0.02);
   color: var(--muted);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
-
 .controls { display: flex; gap: 8px; }
 .controls button {
   background: transparent;
@@ -192,18 +151,13 @@ footer {
   border: 1px solid rgba(255,255,255,0.06);
   padding: 8px 10px;
   border-radius: 6px;
+  cursor: pointer;
 }
 
-/* Mobile */
-@media (max-width: 720px){
+/* Responsive */
+@media (max-width: 720px) {
+  .game-card { flex-direction: column; }
+  .game-media, .game-description { width: 100%; }
   iframe { width: 100%; height: 200px; }
-  .videos { flex-direction: column; }
-  .projects { grid-template-columns: 1fr; }
-
-  .game-card {
-    flex-direction: column;
-  }
-  .game-media, .game-description {
-    width: 100%;
-  }
+  main { padding: 20px 12px; }
 }
