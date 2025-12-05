@@ -151,6 +151,59 @@ footer {
   font-weight: 600;
 }
 .controls button:hover { transform: translateY(-2px); }
+/* Games Developed Section */
+#games {
+    width: 100%;
+    padding: 60px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.section-title {
+    font-size: 2rem;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.game-card {
+    display: flex;
+    flex-direction: row;
+    background: var(--card);
+    border: 2px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px;
+    gap: 20px;
+    width: 90%;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.game-media {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.game-title {
+    font-size: 1.6rem;
+    color: var(--muted);
+}
+
+.game-gif {
+    width: 100%;
+    border-radius: 12px;
+    border: 2px solid var(--accent-a);
+}
+
+.game-description {
+    width: 50%;
+    font-size: 1.1rem;
+    color: var(--muted);
+    line-height: 1.5rem;
+}
 
 /* Responsive tweaks */
 @media (max-width: 720px){
@@ -159,6 +212,7 @@ footer {
   header { padding: 28px 16px; }
   .projects { grid-template-columns: 1fr; }
 }
+
 
 
 
