@@ -45,7 +45,7 @@ function resizeAll() {
   A2 = new Float32Array(simW * simH);
   B2 = new Float32Array(simW * simH);
 
-  // initial circular seeds (several blobs)
+  // initial circular seeds
   seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
 }
 
@@ -53,25 +53,25 @@ window.addEventListener("resize", resizeAll);
 resizeAll();
 
 /* -----------------------------
-   Seeding: circular blobs (in sim coordinates)
+   Seeding: circular blobs
 ------------------------------*/
 function seedCircularBlobsSim(num = 10, radius = 12) {
   for (let n = 0; n < num; n++) {
     const cx = Math.floor(Math.random() * simW);
     const cy = Math.floor(Math.random() * simH);
 
-    // soft circular blob: distance falloff -> smoother edge
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
         const sx = cx + dx;
         const sy = cy + dy;
         if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
+
         const d2 = dx*dx + dy*dy;
         if (d2 <= radius*radius) {
           const idx = sx + sy * simW;
-          // set B strongly at center, fade at edges
           const dist = Math.sqrt(d2) / radius;
-          const intensity = 1.0 - dist * 0.9; // inner ~1.0, edge ~0.1
+          const intensity = 1.0 - dist * 0.9;
+
           B[idx] = Math.max(B[idx], intensity * (0.6 + Math.random()*0.4));
           A[idx] = Math.min(A[idx], 1.0 - intensity * 0.2);
         }
@@ -80,16 +80,18 @@ function seedCircularBlobsSim(num = 10, radius = 12) {
   }
 }
 
-// small circular single-spot injections periodically
+// small circular spot injections
 function addRandomCircularSpotsSim(count = 20, radius = 2) {
   for (let i = 0; i < count; i++) {
     const cx = Math.floor(Math.random() * simW);
     const cy = Math.floor(Math.random() * simH);
+
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
         const sx = cx + dx;
         const sy = cy + dy;
         if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
+
         if (dx*dx + dy*dy <= radius*radius) {
           const idx = sx + sy * simW;
           B[idx] = Math.max(B[idx], 0.5 * Math.random() + 0.2);
@@ -117,7 +119,6 @@ function laplaceSim(arr, x, y) {
    Simulation step (Gray-Scott)
 ------------------------------*/
 function stepSim() {
-  // iterate inner region
   for (let y = 1; y < simH - 1; y++) {
     for (let x = 1; x < simW - 1; x++) {
       const i = x + y * simW;
@@ -132,25 +133,25 @@ function stepSim() {
     }
   }
 
-  // swap buffers
-  const tmpA = A; A = A2; A2 = tmpA;
-  const tmpB = B; B = B2; B2 = tmpB;
+  [A, A2] = [A2, A];
+  [B, B2] = [B2, B];
 }
 
 /* -----------------------------
-   Render sim -> offscreen -> upscale to main canvas
+   Render simulation -> canvas
 ------------------------------*/
 function renderSimToCanvas() {
-  // create image data for sim size (reused via putImageData)
+  // ✨ PREVENT SHIMMER — disable smoothing
+  ctx.imageSmoothingEnabled = false;
+  simCtx.imageSmoothingEnabled = false;
+
   const img = simCtx.createImageData(simW, simH);
   const data = img.data;
 
   for (let i = 0; i < simW * simH; i++) {
     const diff = A[i] - B[i];
-    // safe mid-tone mapping (stronger contrast)
     const v = Math.floor(Math.min(255, Math.max(0, diff * 160 + 128)));
 
-    // color mapping leaning brown/purple by offsets
     const r = Math.min(255, Math.max(0, v + 30));
     const g = Math.min(255, Math.max(0, v - 6));
     const b = Math.min(255, Math.max(0, v + 8));
@@ -164,36 +165,27 @@ function renderSimToCanvas() {
 
   simCtx.putImageData(img, 0, 0);
 
-  // draw the small sim canvas scaled to the oversized main canvas
   ctx.clearRect(0, 0, canvasW, canvasH);
   ctx.drawImage(simCanvas, 0, 0, canvasW, canvasH);
 }
 
 /* -----------------------------
-   Keep it lively: periodic random circular spots (in sim coords)
+   Keep dynamic
 ------------------------------*/
-setInterval(() => {
-  addRandomCircularSpotsSim(24, 2);
-}, 2000);
-
-// Larger occasional reseed (multi-circle)
-setInterval(() => {
-  seedCircularBlobsSim(2, Math.floor(Math.min(simW, simH) * 0.06));
-}, 9000);
+setInterval(() => addRandomCircularSpotsSim(24, 2), 2000);
+setInterval(() => seedCircularBlobsSim(2, Math.floor(Math.min(simW, simH) * 0.06)), 9000);
 
 /* -----------------------------
    Main loop
 ------------------------------*/
 function loop() {
   if (running) {
-    // do multiple small steps per frame for smoother growth
     stepSim();
     stepSim();
     stepSim();
     renderSimToCanvas();
   }
 
-  // soft parallax on main canvas (oversized, so no white gaps)
   const offsetY = window.scrollY * 0.18;
   canvas.style.transform = `translateY(${offsetY}px)`;
 
@@ -202,7 +194,7 @@ function loop() {
 loop();
 
 /* -----------------------------
-   Controls (Pause/Clear) + Scroll Buttons
+   Controls
 ------------------------------*/
 document.getElementById("pauseBtn").addEventListener("click", () => {
   running = !running;
@@ -210,11 +202,12 @@ document.getElementById("pauseBtn").addEventListener("click", () => {
 });
 
 document.getElementById("clearBtn").addEventListener("click", () => {
-  // reseed big smooth blobs on clear
   seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
 });
 
-// Work/Content buttons (keep as before)
+/* -----------------------------
+   Scroll Buttons
+------------------------------*/
 const btnContent = document.getElementById("btnContent");
 const btnWork = document.getElementById("btnWork");
 const workSection = document.getElementById("workSection");
