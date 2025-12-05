@@ -1,180 +1,126 @@
-/* reaction-diffusion.js
-   Gray-Scott simulation, oversized canvas for scroll-safe background
-*/
+/* -----------------------------
+   Reaction Diffusion Background
+------------------------------ */
 
-const canvas = document.getElementById('rd');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("rd");
+const ctx = canvas.getContext("2d");
 
-let canvasW, canvasH;
-let simW = 720; // medium-res simulation for smooth growth
-let simH;
-
-let A, B, A2, B2;
+let w, h;
+let A, B;
 let running = true;
 
-// Resize canvas and simulation arrays
-function resizeAll() {
-  canvasW = Math.round(window.innerWidth * 1.5);
-  canvasH = Math.round(window.innerHeight * 1.5);
-  canvas.width = canvasW;
-  canvas.height = canvasH;
+// Initialize canvas and buffers
+function resizeCanvas() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight; // always viewport
+  A = new Float32Array(w * h).fill(1);
+  B = new Float32Array(w * h).fill(0);
 
-  const aspect = canvasW / canvasH;
-  simW = Math.max(180, Math.min(600, 360)); // fixed medium resolution
-  simH = Math.max(120, Math.round(simW / aspect));
-
-  A = new Float32Array(simW * simH).fill(1.0);
-  B = new Float32Array(simW * simH).fill(0.0);
-  A2 = new Float32Array(simW * simH);
-  B2 = new Float32Array(simW * simH);
-
-  seedSim();
+  // Initial random B spots
+  addRandomBSpots(500);
 }
 
-window.addEventListener('resize', resizeAll);
-resizeAll();
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
-// Seed with a central blob + a few random spots
-function seedSim() {
-  for (let i = 0; i < simW * simH; i++) {
-    A[i] = 1.0;
-    B[i] = 0.0;
-  }
-
-  const cx = Math.floor(simW / 2);
-  const cy = Math.floor(simH / 2);
-
-  for (let y = cy - 12; y <= cy + 12; y++) {
-    for (let x = cx - 24; x <= cx + 24; x++) {
-      if (x > 1 && x < simW - 2 && y > 1 && y < simH - 2) {
-        const idx = x + y * simW;
-        B[idx] = 0.6 + Math.random() * 0.4;
-        A[idx] = 0.3 + Math.random() * 0.7;
-      }
-    }
-  }
-
-  // a few small random seeds
-  for (let i = 0; i < 50; i++) {
-    const rx = Math.floor(Math.random() * simW);
-    const ry = Math.floor(Math.random() * simH);
-    B[rx + ry * simW] = 0.5 * Math.random();
+// Add random B spots for evolution
+function addRandomBSpots(count = 50) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.floor(Math.random() * w);
+    const y = Math.floor(Math.random() * h);
+    B[x + y * w] = 1;
   }
 }
 
-// Laplacian convolution (5-point)
-function laplace(arr, x, y) {
-  const idx = x + y * simW;
-  return (
-    arr[idx] * -1 +
-    arr[idx - 1] * 0.2 +
-    arr[idx + 1] * 0.2 +
-    arr[idx - simW] * 0.2 +
-    arr[idx + simW] * 0.2
-  );
+// Laplacian function for diffusion
+function lap(arr, x, y) {
+  const idx = x + y * w;
+  return arr[idx] * -1 + arr[idx - 1] * 0.2 + arr[idx + 1] * 0.2 + arr[idx - w] * 0.2 + arr[idx + w] * 0.2;
 }
 
-// Gray-Scott step
-function stepSim() {
-  const dA = 1.0, dB = 0.5;
-  const feed = 0.036, kill = 0.065;
+// Update reaction-diffusion
+function updateRD() {
+  const feed = 0.034, kill = 0.062, Da = 1, Db = 0.5;
+  const newA = new Float32Array(w * h);
+  const newB = new Float32Array(w * h);
 
-  for (let y = 1; y < simH - 1; y++) {
-    for (let x = 1; x < simW - 1; x++) {
-      const i = x + y * simW;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = x + y * w;
       const a = A[i], b = B[i];
-      const reaction = a * b * b;
 
-      let aNext = a + (dA * laplace(A, x, y) - reaction + feed * (1 - a));
-      let bNext = b + (dB * laplace(B, x, y) + reaction - (kill + feed) * b);
+      // Gray-Scott Reaction-Diffusion equations
+      const aNext = a + (Da * lap(A, x, y) - a * b * b + feed * (1 - a));
+      const bNext = b + (Db * lap(B, x, y) + a * b * b - (kill + feed) * b);
 
-      A2[i] = Math.min(1, Math.max(0, aNext));
-      B2[i] = Math.min(1, Math.max(0, bNext));
+      // Clamp values to [0,1]
+      newA[i] = Math.min(Math.max(aNext, 0), 1);
+      newB[i] = Math.min(Math.max(bNext, 0), 1);
     }
   }
 
-  // swap buffers
-  [A, A2] = [A2, A];
-  [B, B2] = [B2, B];
+  A = newA;
+  B = newB;
 }
 
-// Render to canvas with color mapping
-function renderSimToCanvas() {
-  const img = ctx.createImageData(canvasW, canvasH);
-  const data = img.data;
+// Draw reaction-diffusion
+function drawRD() {
+  const imageData = ctx.createImageData(w, h);
+  const data = imageData.data;
 
-  const sx = canvasW / simW;
-  const sy = canvasH / simH;
-
-  for (let y = 0; y < simH; y++) {
-    for (let x = 0; x < simW; x++) {
-      const i = x + y * simW;
-      const diff = A[i] - B[i];
-
-      // map to palette-like colors
-      const v = Math.floor(Math.min(255, Math.max(0, diff * 128 + 128)));
-      const r = Math.min(255, v + 30);
-      const g = v;
-      const b = Math.min(255, v + 15);
-
-      const px = Math.floor(x * sx);
-      const py = Math.floor(y * sy);
-      const wBlock = Math.ceil(sx);
-      const hBlock = Math.ceil(sy);
-
-      for (let yy = 0; yy < hBlock; yy++) {
-        const row = (py + yy) * canvasW * 4;
-        for (let xx = 0; xx < wBlock; xx++) {
-          const col = (px + xx) * 4;
-          const pos = row + col;
-          if (pos >= 0 && pos + 2 < data.length) {
-            data[pos] = r;
-            data[pos + 1] = g;
-            data[pos + 2] = b;
-            data[pos + 3] = 255;
-          }
-        }
-      }
-    }
+  for (let i = 0; i < A.length; i++) {
+    const diff = A[i] - B[i];
+    // Map to safe mid-range color to reduce flicker
+    const v = Math.floor((diff * 100) + 128); // softer scaling
+    const idx = i * 4;
+    data[idx] = Math.max(0, Math.min(255, v + 20));   // Red
+    data[idx + 1] = Math.max(0, Math.min(255, v));    // Green
+    data[idx + 2] = Math.max(0, Math.min(255, v + 10)); // Blue
+    data[idx + 3] = 255;
   }
 
-  ctx.putImageData(img, 0, 0);
+  ctx.putImageData(imageData, 0, 0);
 }
 
-// Occasionally add random spots for liveliness
-setInterval(() => {
-  for (let i = 0; i < 40; i++) {
-    const rx = Math.floor(Math.random() * simW);
-    const ry = Math.floor(Math.random() * simH);
-    B[rx + ry * simW] = 0.6 + Math.random() * 0.4;
-  }
-}, 3000);
+// Add B spots every few seconds
+setInterval(() => addRandomBSpots(50), 2500);
 
-// Animation loop
-function loop() {
+// Main animation loop
+function animate() {
   if (running) {
-    // 3 steps per frame for smoother growth
-    stepSim();
-    stepSim();
-    stepSim();
-    renderSimToCanvas();
+    updateRD();
+    drawRD();
   }
-
-  // oversized canvas parallax
-  const offsetY = window.scrollY * 0.15;
-  canvas.style.transform = `translateY(${offsetY}px)`;
-  requestAnimationFrame(loop);
+  // Soft parallax scroll
+  canvas.style.transform = `translateY(${window.scrollY * 0.2}px)`;
+  requestAnimationFrame(animate);
 }
+animate();
 
-loop();
-
-// Controls
-document.getElementById('pauseBtn').addEventListener('click', () => {
+/* -----------------------------
+   Controls
+------------------------------ */
+document.getElementById("pauseBtn").onclick = () => {
   running = !running;
-  document.getElementById('pauseBtn').textContent = running ? 'Pause' : 'Resume';
+  document.getElementById("pauseBtn").innerText = running ? "Pause" : "Resume";
+};
+
+document.getElementById("clearBtn").onclick = () => {
+  addRandomBSpots(500);
+};
+
+/* -----------------------------
+   Work / Content Scroll
+------------------------------ */
+const btnContent = document.getElementById("btnContent");
+const btnWork = document.getElementById("btnWork");
+const workSection = document.getElementById("workSection");
+const contentSection = document.getElementById("contentSection");
+
+btnContent.addEventListener("click", () => {
+  contentSection.scrollIntoView({ behavior: "smooth" });
 });
 
-document.getElementById('clearBtn').addEventListener('click', () => {
-  seedSim();
+btnWork.addEventListener("click", () => {
+  workSection.scrollIntoView({ behavior: "smooth" });
 });
-
