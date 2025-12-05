@@ -5,14 +5,18 @@
 const canvas = document.getElementById("rd");
 const ctx = canvas.getContext("2d");
 
+// Offscreen buffer for smoothing
+const buffer = document.createElement("canvas");
+const bctx = buffer.getContext("2d");
+
 let w, h;
 let A, B;
 let running = true;
 
 // Resize + init
 function resizeCanvas() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
+  w = canvas.width = buffer.width = window.innerWidth;
+  h = canvas.height = buffer.height = window.innerHeight;
 
   A = new Float32Array(w * h).fill(1);
   B = new Float32Array(w * h).fill(0);
@@ -23,7 +27,7 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// Random seeds
+// Seeds
 function addRandomBSpots(count = 50) {
   for (let i = 0; i < count; i++) {
     const x = Math.floor(Math.random() * w);
@@ -44,7 +48,7 @@ function lap(arr, x, y) {
   );
 }
 
-// RD update
+// RD update step
 function updateRD() {
   const feed = 0.034,
         kill = 0.062,
@@ -71,9 +75,9 @@ function updateRD() {
   B = nextB;
 }
 
-// Draw RD + smoothing
+// Draw RD → OFFSCREEN BUFFER
 function drawRD() {
-  const img = ctx.createImageData(w, h);
+  const img = bctx.createImageData(w, h);
   const d = img.data;
 
   for (let i = 0; i < A.length; i++) {
@@ -87,11 +91,12 @@ function drawRD() {
     d[idx + 3] = 255;
   }
 
-  ctx.putImageData(img, 0, 0);
+  bctx.putImageData(img, 0, 0);
 
-  // ★★★ Added smoothing filter (anti-aliasing)
-  ctx.filter = "blur(2px)";
-  ctx.drawImage(canvas, 0, 0);
+  // ★★★ SMOOTH WHEN DRAWING TO MAIN CANVAS
+  ctx.clearRect(0, 0, w, h);
+  ctx.filter = "blur(2px)";   // you can reduce if needed
+  ctx.drawImage(buffer, 0, 0);
   ctx.filter = "none";
 }
 
@@ -111,7 +116,7 @@ animate();
 
 /* -----------------------------
    Controls
------------------------------- */
+------------------------------*/
 document.getElementById("pauseBtn").onclick = () => {
   running = !running;
   document.getElementById("pauseBtn").innerText = running ? "Pause" : "Resume";
@@ -123,7 +128,7 @@ document.getElementById("clearBtn").onclick = () => {
 
 /* -----------------------------
    Work / Content Scroll
------------------------------- */
+------------------------------*/
 document.getElementById("btnContent").onclick = () =>
   contentSection.scrollIntoView({ behavior: "smooth" });
 
