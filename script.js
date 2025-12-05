@@ -6,7 +6,7 @@ const canvas = document.getElementById('rd');
 const ctx = canvas.getContext('2d');
 
 let canvasW, canvasH;
-let simW = 360; // medium-res simulation for smooth growth
+let simW = 720; // medium-res simulation for smooth growth
 let simH;
 
 let A, B, A2, B2;
@@ -177,3 +177,4 @@ document.getElementById('pauseBtn').addEventListener('click', () => {
 document.getElementById('clearBtn').addEventListener('click', () => {
   seedSim();
 });
+
