@@ -1,107 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Portfolio</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KAKUZENSKY — Portfolio</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
-
-  <!-- Reaction Diffusion Background -->
+  <!-- fullscreen reaction-diffusion canvas -->
   <canvas id="rd"></canvas>
 
   <div class="site">
 
     <!-- HEADER -->
     <header>
-      <h1>Your Name</h1>
-      <p>Developer • Designer • Creator</p>
+      <h1>KAKUZENSKY</h1>
+      <p>Developer • Content Creator • Designer</p>
 
-      <div class="nav-buttons">
-        <button onclick="scrollToSection('projects')">Projects</button>
-        <button onclick="scrollToSection('games')">Games</button> <!-- NEW BUTTON -->
-        <button onclick="scrollToSection('content')">Content</button>
-      </div>
+      <nav class="nav-buttons">
+        <button id="btnWork">Work</button>
+        <button id="btnGames">Games</button>
+        <button id="btnContent">Content</button>
+      </nav>
     </header>
 
-    <!-- MAIN -->
     <main>
-
-      <!-- PROJECTS SECTION -->
-      <section id="projects" class="section">
-        <h2 class="section-title">Projects</h2>
+      <!-- WORK / PROJECTS SECTION -->
+      <section id="workSection" class="section">
+        <h2>Projects I Helped Develop</h2>
 
         <div class="projects">
-          <a class="card" href="#">
-            <h3>Project 1</h3>
-            <p>Project description goes here.</p>
+          <a href="#" class="card">
+            <h3>Project One</h3>
+            <p>Role & brief: frontend, API integration, performance tuning.</p>
           </a>
 
-          <a class="card" href="#">
-            <h3>Project 2</h3>
-            <p>Project description goes here.</p>
+          <a href="#" class="card">
+            <h3>Project Two</h3>
+            <p>Role & brief: accessibility improvements & tests.</p>
+          </a>
+
+          <a href="#" class="card">
+            <h3>Project Three</h3>
+            <p>Role & brief: UI design, animations and build pipelines.</p>
           </a>
         </div>
       </section>
 
       <!-- GAMES DEVELOPED SECTION -->
-      <section id="games" class="section">
-        <h2 class="section-title">Games Developed</h2>
+      <section id="gamesSection" class="section">
+        <h2>Games Developed</h2>
 
-        <!-- Game Entry Example -->
         <div class="game-card">
           <div class="game-media">
-            <h3 class="game-title">Game Title Here</h3>
+            <h3 class="game-title">Example Game Title</h3>
             <img class="game-gif" src="yourgame.gif" alt="Game Preview">
           </div>
 
           <div class="game-description">
             <p>
-              Write your game's description here.
-              You can include features, tools you used, or links to downloads.
+              Short description of the game, engine used (Unity/C#), role (programmer/designer), features, and links.
             </p>
           </div>
         </div>
 
-        <!-- Duplicate .game-card for more games -->
+        <!-- copy .game-card for more entries -->
       </section>
 
-      <!-- CONTENT CREATOR SECTION -->
-      <section id="content" class="section">
-        <h2 class="section-title">Content Creator Work</h2>
+      <!-- CONTENT / VIDEO SECTION -->
+      <section id="contentSection" class="section">
+        <h2>Content Platforms</h2>
 
         <div class="content-links">
-          <a class="btn twitch" href="#">Twitch</a>
-          <a class="btn youtube" href="#">YouTube</a>
+          <a href="https://twitch.tv/scartrox_" target="_blank" class="btn twitch">Twitch</a>
+          <a href="https://www.youtube.com/@Scartrox" target="_blank" class="btn youtube">YouTube</a>
         </div>
 
-        <div class="videos">
-          <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
-          <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
+        <div class="video-section">
+          <h3>Latest Videos</h3>
+          <div class="videos">
+            <iframe 
+              src="https://www.youtube.com/embed/8y7bJj9TRd4?si=li7IfefLFiFIOHLD"
+              title="YouTube video"
+              allowfullscreen>
+            </iframe>
+
+            <iframe 
+              src="https://www.youtube.com/embed/ZggQHPqcbB0?si=BKoWMyePair0QYSB"
+              title="YouTube video"
+              allowfullscreen>
+            </iframe>
+          </div>
         </div>
       </section>
     </main>
 
     <!-- FOOTER -->
     <footer>
-      <p>© 2025 Your Name</p>
+      <p>© 2025 KAKUZENSKY • Portfolio Site</p>
 
       <div class="controls">
         <button id="pauseBtn">Pause</button>
-        <button id="resumeBtn">Resume</button>
+        <button id="clearBtn">Clear</button>
       </div>
     </footer>
 
   </div>
-
-  <script>
-    function scrollToSection(id) {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
-  </script>
 
   <script src="reaction-diffusion.js"></script>
 </body>
