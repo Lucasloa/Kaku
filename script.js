@@ -1,178 +1,224 @@
 /* -----------------------------
-   Reaction Diffusion Background
------------------------------- */
+   Stable Gray-Scott (low-res) reaction-diffusion
+   - circular seeding that grows
+   - offscreen sim -> scaled draw (fast, no flicker)
+   - oversized canvas so scrolling never exposes gaps
+------------------------------*/
 
 const canvas = document.getElementById("rd");
 const ctx = canvas.getContext("2d");
 
-let w, h;
-let A, B;
+// offscreen sim canvas used for rendering
+const simCanvas = document.createElement("canvas");
+const simCtx = simCanvas.getContext("2d");
+
+let canvasW = 0, canvasH = 0;
+let simW = 360, simH = 220; // medium sim resolution (tuned for growth)
+let A, B, A2, B2;
 let running = true;
 
-// Initialize canvas and buffers
-function resizeCanvas() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
+// Growth-friendly Gray-Scott parameters
+const dA = 1.0;
+const dB = 0.5;
+const feed = 0.0275;
+const kill = 0.062;
 
-  A = new Float32Array(w * h).fill(1);
-  B = new Float32Array(w * h).fill(0);
+// Resize canvases and (re)initialize arrays
+function resizeAll() {
+  // Oversized canvas to avoid scroll gaps
+  canvasW = Math.round(window.innerWidth * 1.5);
+  canvasH = Math.round(window.innerHeight * 1.5);
+  canvas.width = canvasW;
+  canvas.height = canvasH;
 
-  seedCircularBlobs(14, 18); // smooth circular blobs
+  // keep sim aspect similar to canvas
+  const aspect = canvasW / canvasH;
+  simW = Math.max(160, Math.min(600, Math.round(360 * aspect)));
+  simH = Math.max(120, Math.round(simW / aspect));
+
+  simCanvas.width = simW;
+  simCanvas.height = simH;
+
+  // allocate sim buffers
+  A = new Float32Array(simW * simH).fill(1.0);
+  B = new Float32Array(simW * simH).fill(0.0);
+  A2 = new Float32Array(simW * simH);
+  B2 = new Float32Array(simW * simH);
+
+  // initial circular seeds (several blobs)
+  seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
 }
 
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
+window.addEventListener("resize", resizeAll);
+resizeAll();
 
 /* -----------------------------
-   Circular seeding
------------------------------- */
-
-function seedCircularBlobs(num = 12, size = 20) {
+   Seeding: circular blobs (in sim coordinates)
+------------------------------*/
+function seedCircularBlobsSim(num = 10, radius = 12) {
   for (let n = 0; n < num; n++) {
-    const cx = Math.floor(Math.random() * w);
-    const cy = Math.floor(Math.random() * h);
+    const cx = Math.floor(Math.random() * simW);
+    const cy = Math.floor(Math.random() * simH);
 
-    for (let dx = -size; dx <= size; dx++) {
-      for (let dy = -size; dy <= size; dy++) {
-        if (dx * dx + dy * dy <= size * size) { // circle mask
-          const x = cx + dx;
-          const y = cy + dy;
-          if (x > 1 && y > 1 && x < w - 1 && y < h - 1) {
-            B[x + y * w] = 1;
-          }
+    // soft circular blob: distance falloff -> smoother edge
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const sx = cx + dx;
+        const sy = cy + dy;
+        if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
+        const d2 = dx*dx + dy*dy;
+        if (d2 <= radius*radius) {
+          const idx = sx + sy * simW;
+          // set B strongly at center, fade at edges
+          const dist = Math.sqrt(d2) / radius;
+          const intensity = 1.0 - dist * 0.9; // inner ~1.0, edge ~0.1
+          B[idx] = Math.max(B[idx], intensity * (0.6 + Math.random()*0.4));
+          A[idx] = Math.min(A[idx], 1.0 - intensity * 0.2);
         }
       }
     }
   }
 }
 
-// Add small circular spots during evolution
-function addRandomBSpots(count = 50) {
+// small circular single-spot injections periodically
+function addRandomCircularSpotsSim(count = 20, radius = 2) {
   for (let i = 0; i < count; i++) {
-    const x = Math.floor(Math.random() * w);
-    const y = Math.floor(Math.random() * h);
-    const idx = x + y * w;
-    B[idx] = 1;
+    const cx = Math.floor(Math.random() * simW);
+    const cy = Math.floor(Math.random() * simH);
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const sx = cx + dx;
+        const sy = cy + dy;
+        if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
+        if (dx*dx + dy*dy <= radius*radius) {
+          const idx = sx + sy * simW;
+          B[idx] = Math.max(B[idx], 0.5 * Math.random() + 0.2);
+        }
+      }
+    }
   }
 }
 
 /* -----------------------------
-   Laplacian
------------------------------- */
-
-function lap(arr, x, y) {
-  const idx = x + y * w;
+   Laplacian (5-point)
+------------------------------*/
+function laplaceSim(arr, x, y) {
+  const idx = x + y * simW;
   return (
     arr[idx] * -1 +
-    arr[idx - 1] * 0.2 +
-    arr[idx + 1] * 0.2 +
-    arr[idx - w] * 0.2 +
-    arr[idx + w] * 0.2
+    arr[idx - 1] * 0.25 +
+    arr[idx + 1] * 0.25 +
+    arr[idx - simW] * 0.25 +
+    arr[idx + simW] * 0.25
   );
 }
 
 /* -----------------------------
-   Reaction-Diffusion Update
------------------------------- */
-
-function updateRD() {
-  const feed = 0.034, kill = 0.062, Da = 1, Db = 0.5;
-  const newA = new Float32Array(w * h);
-  const newB = new Float32Array(w * h);
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = x + y * w;
+   Simulation step (Gray-Scott)
+------------------------------*/
+function stepSim() {
+  // iterate inner region
+  for (let y = 1; y < simH - 1; y++) {
+    for (let x = 1; x < simW - 1; x++) {
+      const i = x + y * simW;
       const a = A[i], b = B[i];
-
-      // Gray-Scott equations
       const reaction = a * b * b;
 
-      const aNext = a + (Da * lap(A, x, y) - reaction + feed * (1 - a));
-      const bNext = b + (Db * lap(B, x, y) + reaction - (kill + feed) * b);
+      const aNext = a + (dA * laplaceSim(A, x, y) - reaction + feed * (1 - a));
+      const bNext = b + (dB * laplaceSim(B, x, y) + reaction - (kill + feed) * b);
 
-      newA[i] = Math.min(Math.max(aNext, 0), 1);
-      newB[i] = Math.min(Math.max(bNext, 0), 1);
+      A2[i] = Math.min(1, Math.max(0, aNext));
+      B2[i] = Math.min(1, Math.max(0, bNext));
     }
   }
 
-  A = newA;
-  B = newB;
+  // swap buffers
+  const tmpA = A; A = A2; A2 = tmpA;
+  const tmpB = B; B = B2; B2 = tmpB;
 }
 
 /* -----------------------------
-   Render to Canvas
------------------------------- */
-
-function drawRD() {
-  const img = ctx.createImageData(w, h);
+   Render sim -> offscreen -> upscale to main canvas
+------------------------------*/
+function renderSimToCanvas() {
+  // create image data for sim size (reused via putImageData)
+  const img = simCtx.createImageData(simW, simH);
   const data = img.data;
 
-  for (let i = 0; i < A.length; i++) {
+  for (let i = 0; i < simW * simH; i++) {
     const diff = A[i] - B[i];
+    // safe mid-tone mapping (stronger contrast)
+    const v = Math.floor(Math.min(255, Math.max(0, diff * 160 + 128)));
 
-    // softer color mapping to avoid flicker
-    const v = Math.floor(diff * 100 + 128);
+    // color mapping leaning brown/purple by offsets
+    const r = Math.min(255, Math.max(0, v + 30));
+    const g = Math.min(255, Math.max(0, v - 6));
+    const b = Math.min(255, Math.max(0, v + 8));
 
-    const idx = i * 4;
-    data[idx] = Math.max(0, Math.min(255, v + 20)); // R
-    data[idx + 1] = Math.max(0, Math.min(255, v));   // G
-    data[idx + 2] = Math.max(0, Math.min(255, v + 10)); // B
-    data[idx + 3] = 255;
+    const p = i * 4;
+    data[p] = r;
+    data[p+1] = g;
+    data[p+2] = b;
+    data[p+3] = 255;
   }
 
-  ctx.putImageData(img, 0, 0);
+  simCtx.putImageData(img, 0, 0);
+
+  // draw the small sim canvas scaled to the oversized main canvas
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.drawImage(simCanvas, 0, 0, canvasW, canvasH);
 }
 
 /* -----------------------------
-   Extra B spots over time
------------------------------- */
-setInterval(() => addRandomBSpots(30), 2200);
+   Keep it lively: periodic random circular spots (in sim coords)
+------------------------------*/
+setInterval(() => {
+  addRandomCircularSpotsSim(24, 2);
+}, 2000);
+
+// Larger occasional reseed (multi-circle)
+setInterval(() => {
+  seedCircularBlobsSim(2, Math.floor(Math.min(simW, simH) * 0.06));
+}, 9000);
 
 /* -----------------------------
-   Animation Loop
------------------------------- */
-
-function animate() {
+   Main loop
+------------------------------*/
+function loop() {
   if (running) {
-    updateRD();
-    drawRD();
+    // do multiple small steps per frame for smoother growth
+    stepSim();
+    stepSim();
+    stepSim();
+    renderSimToCanvas();
   }
 
-  // Parallax movement
-  canvas.style.transform = `translateY(${window.scrollY * 0.2}px)`;
+  // soft parallax on main canvas (oversized, so no white gaps)
+  const offsetY = window.scrollY * 0.18;
+  canvas.style.transform = `translateY(${offsetY}px)`;
 
-  requestAnimationFrame(animate);
+  requestAnimationFrame(loop);
 }
-animate();
+loop();
 
 /* -----------------------------
-   Controls
------------------------------- */
-
-document.getElementById("pauseBtn").onclick = () => {
+   Controls (Pause/Clear) + Scroll Buttons
+------------------------------*/
+document.getElementById("pauseBtn").addEventListener("click", () => {
   running = !running;
-  document.getElementById("pauseBtn").innerText =
-    running ? "Pause" : "Resume";
-};
+  document.getElementById("pauseBtn").textContent = running ? "Pause" : "Resume";
+});
 
-document.getElementById("clearBtn").onclick = () => {
-  seedCircularBlobs(14, 18);
-};
+document.getElementById("clearBtn").addEventListener("click", () => {
+  // reseed big smooth blobs on clear
+  seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
+});
 
-/* -----------------------------
-   Navigation buttons
------------------------------- */
-
+// Work/Content buttons (keep as before)
 const btnContent = document.getElementById("btnContent");
 const btnWork = document.getElementById("btnWork");
 const workSection = document.getElementById("workSection");
 const contentSection = document.getElementById("contentSection");
 
-btnContent.addEventListener("click", () => {
-  contentSection.scrollIntoView({ behavior: "smooth" });
-});
-
-btnWork.addEventListener("click", () => {
-  workSection.scrollIntoView({ behavior: "smooth" });
-});
+if (btnContent && contentSection) btnContent.addEventListener("click", () => contentSection.scrollIntoView({behavior:'smooth'}));
+if (btnWork && workSection) btnWork.addEventListener("click", () => workSection.scrollIntoView({behavior:'smooth'}));
