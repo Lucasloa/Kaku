@@ -1,224 +1,89 @@
 /* -----------------------------
-   Stable Gray-Scott (low-res) reaction-diffusion
-   - circular seeding that grows
-   - offscreen sim -> scaled draw (fast, no flicker)
-   - oversized canvas so scrolling never exposes gaps
-------------------------------*/
-
-const canvas = document.getElementById("rd");
-const ctx = canvas.getContext("2d");
-
-// offscreen sim canvas used for rendering
-const simCanvas = document.createElement("canvas");
-const simCtx = simCanvas.getContext("2d");
-
-let canvasW = 0, canvasH = 0;
-let simW = 360, simH = 220; // medium sim resolution (tuned for growth)
-let A, B, A2, B2;
-let running = true;
-
-// Growth-friendly Gray-Scott parameters
-const dA = 1.0;
-const dB = 0.5;
-const feed = 0.0275;
-const kill = 0.062;
-
-// Resize canvases and (re)initialize arrays
-function resizeAll() {
-  // Oversized canvas to avoid scroll gaps
-  canvasW = Math.round(window.innerWidth * 1.5);
-  canvasH = Math.round(window.innerHeight * 1.5);
-  canvas.width = canvasW;
-  canvas.height = canvasH;
-
-  // keep sim aspect similar to canvas
-  const aspect = canvasW / canvasH;
-  simW = Math.max(160, Math.min(600, Math.round(360 * aspect)));
-  simH = Math.max(120, Math.round(simW / aspect));
-
-  simCanvas.width = simW;
-  simCanvas.height = simH;
-
-  // allocate sim buffers
-  A = new Float32Array(simW * simH).fill(1.0);
-  B = new Float32Array(simW * simH).fill(0.0);
-  A2 = new Float32Array(simW * simH);
-  B2 = new Float32Array(simW * simH);
-
-  // initial circular seeds (several blobs)
-  seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
-}
-
-window.addEventListener("resize", resizeAll);
-resizeAll();
-
-/* -----------------------------
-   Seeding: circular blobs (in sim coordinates)
-------------------------------*/
-function seedCircularBlobsSim(num = 10, radius = 12) {
-  for (let n = 0; n < num; n++) {
-    const cx = Math.floor(Math.random() * simW);
-    const cy = Math.floor(Math.random() * simH);
-
-    // soft circular blob: distance falloff -> smoother edge
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        const sx = cx + dx;
-        const sy = cy + dy;
-        if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
-        const d2 = dx*dx + dy*dy;
-        if (d2 <= radius*radius) {
-          const idx = sx + sy * simW;
-          // set B strongly at center, fade at edges
-          const dist = Math.sqrt(d2) / radius;
-          const intensity = 1.0 - dist * 0.9; // inner ~1.0, edge ~0.1
-          B[idx] = Math.max(B[idx], intensity * (0.6 + Math.random()*0.4));
-          A[idx] = Math.min(A[idx], 1.0 - intensity * 0.2);
-        }
-      }
-    }
-  }
-}
-
-// small circular single-spot injections periodically
-function addRandomCircularSpotsSim(count = 20, radius = 2) {
-  for (let i = 0; i < count; i++) {
-    const cx = Math.floor(Math.random() * simW);
-    const cy = Math.floor(Math.random() * simH);
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        const sx = cx + dx;
-        const sy = cy + dy;
-        if (sx <= 1 || sy <= 1 || sx >= simW - 1 || sy >= simH - 1) continue;
-        if (dx*dx + dy*dy <= radius*radius) {
-          const idx = sx + sy * simW;
-          B[idx] = Math.max(B[idx], 0.5 * Math.random() + 0.2);
-        }
-      }
-    }
-  }
-}
-
-/* -----------------------------
-   Laplacian (5-point)
-------------------------------*/
-function laplaceSim(arr, x, y) {
-  const idx = x + y * simW;
-  return (
-    arr[idx] * -1 +
-    arr[idx - 1] * 0.25 +
-    arr[idx + 1] * 0.25 +
-    arr[idx - simW] * 0.25 +
-    arr[idx + simW] * 0.25
-  );
-}
-
-/* -----------------------------
-   Simulation step (Gray-Scott)
-------------------------------*/
-function stepSim() {
-  // iterate inner region
-  for (let y = 1; y < simH - 1; y++) {
-    for (let x = 1; x < simW - 1; x++) {
-      const i = x + y * simW;
-      const a = A[i], b = B[i];
-      const reaction = a * b * b;
-
-      const aNext = a + (dA * laplaceSim(A, x, y) - reaction + feed * (1 - a));
-      const bNext = b + (dB * laplaceSim(B, x, y) + reaction - (kill + feed) * b);
-
-      A2[i] = Math.min(1, Math.max(0, aNext));
-      B2[i] = Math.min(1, Math.max(0, bNext));
-    }
-  }
-
-  // swap buffers
-  const tmpA = A; A = A2; A2 = tmpA;
-  const tmpB = B; B = B2; B2 = tmpB;
-}
-
-/* -----------------------------
-   Render sim -> offscreen -> upscale to main canvas
-------------------------------*/
-function renderSimToCanvas() {
-  // create image data for sim size (reused via putImageData)
-  const img = simCtx.createImageData(simW, simH);
-  const data = img.data;
-
-  for (let i = 0; i < simW * simH; i++) {
-    const diff = A[i] - B[i];
-    // safe mid-tone mapping (stronger contrast)
-    const v = Math.floor(Math.min(255, Math.max(0, diff * 160 + 128)));
-
-    // color mapping leaning brown/purple by offsets
-    const r = Math.min(255, Math.max(0, v + 30));
-    const g = Math.min(255, Math.max(0, v - 6));
-    const b = Math.min(255, Math.max(0, v + 8));
-
-    const p = i * 4;
-    data[p] = r;
-    data[p+1] = g;
-    data[p+2] = b;
-    data[p+3] = 255;
-  }
-
-  simCtx.putImageData(img, 0, 0);
-
-  // draw the small sim canvas scaled to the oversized main canvas
-  ctx.clearRect(0, 0, canvasW, canvasH);
-  ctx.drawImage(simCanvas, 0, 0, canvasW, canvasH);
-}
-
-/* -----------------------------
-   Keep it lively: periodic random circular spots (in sim coords)
-------------------------------*/
-setInterval(() => {
-  addRandomCircularSpotsSim(24, 2);
-}, 2000);
-
-// Larger occasional reseed (multi-circle)
-setInterval(() => {
-  seedCircularBlobsSim(2, Math.floor(Math.min(simW, simH) * 0.06));
-}, 9000);
-
-/* -----------------------------
-   Main loop
-------------------------------*/
-function loop() {
-  if (running) {
-    // do multiple small steps per frame for smoother growth
-    stepSim();
-    stepSim();
-    stepSim();
-    renderSimToCanvas();
-  }
-
-  // soft parallax on main canvas (oversized, so no white gaps)
-  const offsetY = window.scrollY * 0.18;
-  canvas.style.transform = `translateY(${offsetY}px)`;
-
-  requestAnimationFrame(loop);
-}
-loop();
-
-/* -----------------------------
-   Controls (Pause/Clear) + Scroll Buttons
-------------------------------*/
-document.getElementById("pauseBtn").addEventListener("click", () => {
-  running = !running;
-  document.getElementById("pauseBtn").textContent = running ? "Pause" : "Resume";
+   Parallax effect
+------------------------------ */
+document.addEventListener("scroll", () => {
+  const s = window.scrollY;
+  document.querySelector(".layer-1").style.transform = `translateY(${s * 0.05}px)`;
+  document.querySelector(".layer-2").style.transform = `translateY(${s * 0.1}px)`;
+  document.querySelector(".layer-3").style.transform = `translateY(${s * 0.15}px)`;
 });
 
-document.getElementById("clearBtn").addEventListener("click", () => {
-  // reseed big smooth blobs on clear
-  seedCircularBlobsSim(12, Math.floor(Math.min(simW, simH) * 0.06));
+/* -----------------------------
+   Video carousel (instant switch)
+------------------------------ */
+const videos = document.querySelectorAll(".game-video");
+const descriptions = document.querySelectorAll(".desc-item");
+const prevBtn = document.querySelector(".carousel-btn.prev");
+const nextBtn = document.querySelector(".carousel-btn.next");
+
+let currentIndex = 0;
+
+function updateCarousel(index) {
+  videos.forEach((v, i) => {
+    if (i === index) {
+      v.classList.add("active");
+      v.style.display = "block";  // show current video
+    } else {
+      v.classList.remove("active");
+      v.style.display = "none";   // hide all others
+    }
+  });
+
+  descriptions.forEach((d, i) => {
+    if (i === index) d.classList.add("active");
+    else d.classList.remove("active");
+  });
+}
+
+// Button events
+prevBtn.addEventListener("click", () => {
+  currentIndex = (currentIndex - 1 + videos.length) % videos.length;
+  updateCarousel(currentIndex);
 });
 
-// Work/Content buttons (keep as before)
-const btnContent = document.getElementById("btnContent");
-const btnWork = document.getElementById("btnWork");
-const workSection = document.getElementById("workSection");
-const contentSection = document.getElementById("contentSection");
+nextBtn.addEventListener("click", () => {
+  currentIndex = (currentIndex + 1) % videos.length;
+  updateCarousel(currentIndex);
+});
 
-if (btnContent && contentSection) btnContent.addEventListener("click", () => contentSection.scrollIntoView({behavior:'smooth'}));
-if (btnWork && workSection) btnWork.addEventListener("click", () => workSection.scrollIntoView({behavior:'smooth'}));
+// Optional autoplay
+setInterval(() => {
+  currentIndex = (currentIndex + 1) % videos.length;
+  updateCarousel(currentIndex);
+}, 6000);
+
+// Initialize
+updateCarousel(currentIndex);
+// Expand project images modal
+const modal = document.getElementById("imgModal");
+const modalImg = document.getElementById("modalImage");
+const closeBtn = modal.querySelector(".close");
+
+document.querySelectorAll(".expand-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    modal.style.display = "flex";
+    modalImg.src = btn.dataset.img;
+  });
+});
+
+closeBtn.addEventListener("click", () => modal.style.display = "none");
+
+// Also close if clicked outside the image
+modal.addEventListener("click", e => {
+  if (e.target === modal) modal.style.display = "none";
+});
+
+/* -----------------------------
+   Navigation buttons
+------------------------------ */
+document.getElementById("btnWork").onclick = () =>
+  document.getElementById("workSection").scrollIntoView({ behavior: "smooth" });
+
+document.getElementById("btnGames").onclick = () =>
+  document.getElementById("gamesSection").scrollIntoView({ behavior: "smooth" });
+
+document.getElementById("btnSkills").onclick = () =>
+  document.getElementById("skillsSection").scrollIntoView({ behavior: "smooth" });
+
+document.getElementById("btnContent").onclick = () =>
+  document.getElementById("contentSection").scrollIntoView({ behavior: "smooth" });
