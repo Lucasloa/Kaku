@@ -7,123 +7,152 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- fullscreen reaction-diffusion canvas -->
-  <canvas id="rd"></canvas>
 
-  <div class="site">
+<!-- Background vector layers with diagonal lines -->
+<div class="background">
+  <div class="layer layer-1">
+    <svg viewBox="0 0 1000 800" preserveAspectRatio="none">
+      <line x1="50" y1="0" x2="2000" y2="88000" stroke="#FF1744" stroke-width="20" opacity="10"/>
+      <line x1="80" y1="0" x2="2000" y2="88000" stroke="#73173D" stroke-width="15" opacity="5"/>
+    </svg>
+  </div>
+</div>
 
-    <!-- HEADER -->
-    <header>
-      <h1>KAKUZENSKY</h1>
-      <p>Developer • Content Creator • Designer</p>
+<div class="site">
 
-      <nav class="nav-buttons">
-        <button id="btnWork">Work</button>
-        <button id="btnGames">Games</button>
-        <button id="btnContent">Content</button>
-      </nav>
-    </header>
+  <!-- HEADER -->
+  <header>
+    <h1>KAKUZENSKY</h1>
+    <p>Developer • Content Creator • Designer</p>
 
-    <main>
-      <!-- WORK / PROJECTS SECTION -->
-      <section id="workSection" class="section">
-        <h2>Projects</h2>
+    <nav class="nav-buttons">
+      <button id="btnWork">Work</button>
+      <button id="btnGames">Games</button>
+      <button id="btnSkills">Skills</button>
+      <button id="btnContent">Content</button>
+    </nav>
+  </header>
 
-        <div class="projects">
-          <a href="https://businesshouse.dk/events/" class="card">
+  <main>
+
+    <!-- PROJECTS SECTION -->
+    <section id="workSection" class="section">
+      <h2>Projects</h2>
+      <div class="projects">
+        <a href="https://businesshouse.dk/events/" class="card horizontal">
+          <div class="project-image">
+            <img src="images/BusinessHouseEvent.png" alt="Business House Roskilde">
+          </div>
+          <div class="project-content">
             <h3>Business House Roskilde</h3>
             <p>Backend, frontend. Event Module, User Registration, MailChimp integration. Made using Wordpress & PHP.</p>
-          </a>
-
-          <a href="https://github.com/Lucasloa/MovieReactRepo" class="card">
-            <h3>React + Vite Project</h3>
-            <p>Simple React project using Vite as the build tool. Sorting and filtering movies in a external API</p>
-          </a>
-        </div>
-      </section>
-
-      <!-- GAMES DEVELOPED SECTION -->
-      <section id="gamesSection" class="section">
-        <h2>Games</h2>
-
-        <div class="game-card">
-          <div class="game-media">
-            <h3 class="game-title">West Wilders</h3>
-            <img class="game-gif" src="yourgame.gif" alt="Game Preview">
+            <button class="expand-btn" data-img="images/BusinessHouseEvent.png">Expand</button>
           </div>
+        </a>
 
-          <div class="game-description">
-            <p>
-              Local Multiplayer game demo, using Mirror. Engine used (Unity/C#).
-              Features: Local Co-Op, Endless Waves, power-ups.
-            </p>
+        <a href="https://github.com/Lucasloa/MovieReactRepo" class="card horizontal">
+          <div class="project-image">
+            <img src="images/ReactWebApp.png" alt="React + Vite Exam Project">
           </div>
-        </div>
-        <div class="game-card">
-          <div class="game-media">
-            <h3 class="game-title">ATOMIC PICNIC</h3>
-            <img class="game-gif" src="yourgame.gif" alt="Game Preview">
+          <div class="project-content">
+            <h3>React + Vite Exam Project</h3>
+            <p>Simple React project using Vite as the build tool. Sorting and filtering movies in an external API.</p>
+            <button class="expand-btn" data-img="images/ReactWebApp.png">Expand</button>
           </div>
+        </a>
+      </div>
+    </section>
 
-          <div class="game-description">
-            <p>
-              Singleplayer Nuclear-Throne inspired roguelike. Engine used (Unity/C#).
-              Features: Dodgeroll, Active-Reloading, Endless Waves, power-ups.
-            </p>
-          </div>
-        </div>
-                <div class="game-card">
-          <div class="game-media">
-            <h3 class="game-title">Magic Moonshiner</h3>
-            <img class="game-gif" src="yourgame.gif" alt="Game Preview">
-          </div>
-
-          <div class="game-description">
-            <p>
-              Singleplayer Stardew Valley inspired Life-Sim with WarioWare type Minigames. Engine used (Unity/C#).
-              Features: Farming, Minigames, Crafting, Quests, NPC interactions.
-            </p>
-          </div>
-        </div>
-        <!-- copy .game-card for more entries -->
-      </section>
-
-      <!-- CONTENT / VIDEO SECTION -->
-      <section id="contentSection" class="section">
-        <h2>Content Platforms</h2>
-
-        <div class="content-links">
-          <a href="https://twitch.tv/scartrox_" target="_blank" class="btn twitch">Twitch</a>
-          <a href="https://www.youtube.com/@Scartrox" target="_blank" class="btn youtube">YouTube</a>
+    <!-- GAMES SECTION -->
+    <section id="gamesSection" class="section">
+      <h2>Games</h2>
+      <div class="video-carousel">
+        <div class="carousel-videos">
+          <video class="game-video" src="videos/WestWilders.mp4" muted autoplay loop playsinline></video>
+          <video class="game-video" src="videos/AtomicPicnic.mp4" muted autoplay loop playsinline></video>
+          <video class="game-video" src="videos/MagicMoonshiner.mp4" muted autoplay loop playsinline></video>
         </div>
 
-        <div class="video-section">
-          <h3>Latest Videos</h3>
-          <div class="videos">
-            <iframe 
-              src="https://www.youtube.com/embed/8y7bJj9TRd4?si=li7IfefLFiFIOHLD"
-              title="YouTube video"
-              allowfullscreen>
-            </iframe>
-
-            <iframe 
-              src="https://www.youtube.com/embed/ZggQHPqcbB0?si=BKoWMyePair0QYSB"
-              title="YouTube video"
-              allowfullscreen>
-            </iframe>
+        <div class="carousel-description">
+          <div class="desc-item active">
+            <h3>West Wilders</h3>
+            <p>Local Multiplayer game demo using Mirror. Engine: Unity/C#. Features: Local Co-Op, Endless Waves, Power-ups.</p>
+          </div>
+          <div class="desc-item">
+            <h3>ATOMIC PICNIC</h3>
+            <p>Singleplayer Nuclear-Throne inspired roguelike. Engine: Unity/C#. Features: Dodgeroll, Active Reloading, Endless Waves, Power-ups.</p>
+          </div>
+          <div class="desc-item">
+            <h3>Magic Moonshiner</h3>
+            <p>Singleplayer Stardew Valley inspired Life-Sim with WarioWare-style minigames. Engine: Unity/C#. Features: Farming, Minigames, Crafting, Quests, NPC interactions.</p>
           </div>
         </div>
-      </section>
-    </main>
 
-    <!-- FOOTER -->
-    <footer>
-      <p>© 2025 KAKUZENSKY • Portfolio Site</p>
-    </footer>
+        <button class="carousel-btn prev">&lt;</button>
+        <button class="carousel-btn next">&gt;</button>
+      </div>
+    </section>
 
-  </div>
+    <!-- SKILLS SECTION -->
+    <section id="skillsSection" class="section">
+      <h2>Skills</h2>
+      <div class="skills-grid">
+        <a class="skill" href="https://react.dev/" target="_blank">
+          <img src="images/reactLogo.svg" alt="React"><span>React.js</span>
+        </a>
+        <a class="skill" href="https://learn.microsoft.com/en-us/dotnet/csharp/" target="_blank">
+          <img src="images/CSharpLogo.png" alt="C#"><span>C#</span>
+        </a>
+        <div class="skill">
+          <img src="images/Agile.png" alt="Agile"><span>Agile Development</span>
+        </div>
+        <a class="skill" href="https://unity.com/" target="_blank">
+          <img src="images/UnityLogo.png" alt="Unity"><span>Unity</span>
+        </a>
+        <a class="skill" href="https://azure.microsoft.com/" target="_blank">
+          <img src="images/AzureLogo.png" alt="Microsoft Azure"><span>Microsoft Azure</span>
+        </a>
+        <a class="skill" href="https://www.python.org/" target="_blank">
+          <img src="images/PythonLogo.png" alt="Python"><span>Python</span>
+        </a>
+      </div>
+    </section>
 
-  <script src="script.js"></script>
+    <!-- CONTENT SECTION -->
+    <section id="contentSection" class="section">
+      <h2>Content Platforms</h2>
+      <div class="content-chapter">
+        <h3>YouTube</h3>
+        <div class="videos">
+          <iframe src="https://www.youtube.com/embed/8y7bJj9TRd4?si=li7IfefLFiFIOHLD" allowfullscreen></iframe>
+          <iframe src="https://www.youtube.com/embed/ZggQHPqcbB0?si=BKoWMyePair0QYSB" allowfullscreen></iframe>
+        </div>
+      </div>
 
+      <div class="content-chapter">
+        <h3>Twitch Clips</h3>
+        <div class="videos">
+          <iframe src="https://clips.twitch.tv/embed?clip=PunchyBrightChickenPJSalt-LyxeuHwgmhv7VLq4&parent=www.example.com" allowfullscreen></iframe>
+          <iframe src="https://clips.twitch.tv/embed?clip=LachrymoseMistyFlyCharlietheUnicorn-kCZp2uqF5oTG2CrD&parent=www.example.com" allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL FOR IMAGE EXPAND -->
+    <div id="imgModal" class="modal">
+      <span class="close">&times;</span>
+      <img class="modal-content" id="modalImage">
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>© 2025 KAKUZENSKY • Portfolio Site</p>
+  </footer>
+
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
